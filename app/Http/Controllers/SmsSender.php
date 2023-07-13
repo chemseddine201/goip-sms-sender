@@ -16,12 +16,14 @@ class SmsSender extends Controller
     protected $host;
     protected $username;
     protected $password;
+    protected $messagesLimit;
 
     public function __construct()
     {
         $this->host = config('services.goip.host');
         $this->username = config('services.goip.username');
         $this->password = config('services.goip.password');
+        $this->messagesLimit = config('services.goip.messagesLimit');
     }
 
     public function processByMessages() :void
@@ -36,7 +38,7 @@ class SmsSender extends Controller
                     $jobs = [];
                     $processed = [];
                     // Select non sent messages from sms table
-                    $messages = $this->getMessages(5);
+                    $messages = $this->getMessages($this->messagesLimit);//8
                     // check if there is non sent messages
                     if ($messages->isEmpty()) {
                         echo "No messages to Send\n";
@@ -48,7 +50,7 @@ class SmsSender extends Controller
                         //get the free line
                         $line = $this->getLine($message->operator_id);
                         if (is_null($line)) {
-                            sleep(3);
+                            sleep(1);
                             continue;
                         }
                         

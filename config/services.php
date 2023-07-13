@@ -35,6 +35,7 @@ return [
         'port' => env('GOIP_PORT'),
         'username' => env('GOIP_USERNAME'),
         'password' => env('GOIP_PASSWORD'),
+        'messagesLimit' => env('GOIP_MESSAGES_AT_ONCE'),
     ],
 
 ];

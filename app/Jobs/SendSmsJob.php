@@ -32,7 +32,6 @@ class SendSmsJob implements ShouldQueue
 
     public function __construct($data)
     {
-        
         $this->url = $this->getGoipUrl();
         $this->data = $data;
         $this->line_id = $this->data['line']['id'];
@@ -60,7 +59,7 @@ class SendSmsJob implements ShouldQueue
             //
             $this->updateData($this->line_id, $this->message_id, $status);
         } catch(Exception $e) {
-            //echo $e;
+            echo $e->getMessage();
             $this->updateData($this->line_id, $this->message_id, false);
         }
     }
