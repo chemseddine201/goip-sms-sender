@@ -1,0 +1,5 @@
+php artisan serve
+
+php artisan queue:list --tries=3 --backoff=10 --queue=sms_queue
+
+php artisan send-messages
