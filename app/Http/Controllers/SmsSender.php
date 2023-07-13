@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\SendSmsJob;
 use App\Models\Line;
 use App\Models\SMS;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Bus;
@@ -26,23 +27,23 @@ class SmsSender extends Controller
         $this->messagesLimit = config('services.goip.messagesLimit');
     }
 
-    public function processByMessages() :void
+    /* public function processByMessages() :void
     {
         try {
             $this->resetLines();
-            //TODO: get multiple free lines then send messages
             while (true) {
                 //
                 try {
                     $line = null;
-                    $jobs = [];
-                    $processed = [];
+                    $mobilis = [];
+                    $djezzy = [];
+                    $ooredoo = [];
                     // Select non sent messages from sms table
                     $messages = $this->getMessages($this->messagesLimit);//8
                     // check if there is non sent messages
                     if ($messages->isEmpty()) {
                         echo "No messages to Send\n";
-                        sleep(10); // Wait for 5 seconds before checking for new messages
+                        sleep(10); // Wait for 10 seconds before checking for new messages
                         continue;
                     }
         
@@ -58,26 +59,74 @@ class SmsSender extends Controller
                         $this->setLineBusy($line->id, true);
                         //Set sms line selected
                         $this->setProcessing($message->id, $line->id);
-                        //assing processed
-                        $processed[] = [
-                            'message_id' => $message->id,
-                            'line_id' => $line->id
-                        ];
-                        //assing job
-                        $jobs[] = new SendSmsJob([
+                         //assing job
+                         if ($message->operator_id === 1) {
+                             $mobilis[] = new SendSmsJob([
+                                 'message' => $message->toArray(),
+                                 'line' => $line->toArray(),
+                             ]);
+                         } else if ($message->operator_id === 2) {
+                            $djezzy[] = new SendSmsJob([
+                                 'message' => $message->toArray(),
+                                 'line' => $line->toArray(),
+                             ]);
+                         } else if ($message->operator_id === 3) {
+                            $ooredoo[] = new SendSmsJob([
+                                'message' => $message->toArray(),
+                                'line' => $line->toArray(),
+                            ]);
+                        }
+                    }
+                    //
+                    Bus::batch($mobilis)->onQueue('mobilis')->dispatch();
+                    Bus::batch($djezzy)->onQueue('djezzy')->dispatch();
+                    Bus::batch($ooredoo)->onQueue('ooredoo')->dispatch();
+                    
+                } catch (Throwable $th) {
+                    throw $th;
+                }
+            }
+        } catch(Exception $e) {
+            echo $e;
+        }
+    } */
+    public function processByMessages() :void
+    {
+        try {
+            $this->resetLines();
+            while (true) {
+                //
+                try {
+                    // Select non sent messages from sms table
+                    $messages = $this->getMessages($this->messagesLimit);//8
+                    // check if there is non sent messages
+                    if ($messages->isEmpty()) {
+                        echo "No messages to Send\n";
+                        sleep(10); // Wait for 10 seconds before checking for new messages
+                        continue;
+                    }
+
+                    $jobs = $messages->map(function ($message) {
+                        $line = $this->getLine($message->operator_id);
+                        if (is_null($line)) {
+                            return null;
+                        }
+                        
+                        //set selected line busy
+                        $this->setLineBusy($line->id, true);
+                        //Set sms line selected
+                        $this->setProcessing($message->id, $line->id);
+                        
+                        return new SendSmsJob([
                             'message' => $message->toArray(),
                             'line' => $line->toArray(),
                         ]);
+                    })->filter()->groupBy('operator.name')->toArray();
+                    
+                    foreach ($jobs as $operator => $operatorJobs) {
+                        Bus::batch($operatorJobs)->onQueue($operator)->dispatch();
                     }
-                    //
-                    Bus::batch($jobs)->onQueue('sms_queue')->then(function (Batch $batch) use ($processed) {
-                        
-                    })->catch(function (Batch $batch, Throwable $e) use ($processed) {
-                        echo $e;
-                        //$this->updateProcessed($processed);
-                    })->finally(function (Batch $batch) use ($processed) {
-                    })->dispatch();
-                } catch (\Throwable $th) {
+                } catch (Throwable $th) {
                     throw $th;
                 }
             }
@@ -86,59 +135,9 @@ class SmsSender extends Controller
         }
     }
 
-    /* public function processByLines() :void
-    {
-        //TODO: get multiple free lines then send messages
-        while (true) {
-            //
-            $line = null;
-            $jobs = [];
-            $processed = [];
-            // Select non sent messages from sms table
-            $lines = $this->getFreeLines();
-            // check if there is lines
-            if ($lines->isEmpty()) {
-                sleep(10); // Wait for 5 seconds before checking for new messages
-                continue;
-            }
-
-            foreach($lines as $line) {
-                //get the free line
-                $message = $this->getMessage($line->operator_id);
-                if (is_null($message)) {
-                    sleep(10);
-                    continue;
-                }
-                //
-                //set line busy
-                $this->setLineBusy($line->id, true);
-                //Set sms line selected
-                $this->setProcessing($message->id, $line->id);
-                //assing processed
-                $processed[] = [
-                    'message_id' => $message->id,
-                    'line_id' => $line->id
-                ];
-                //assing job
-                $jobs[] = new SendSmsJob([
-                    'message' => $message->toArray(),
-                    'line' => $line->toArray(),
-                ]);
-            }
-            //
-            Bus::batch($jobs)->onQueue('sms_queue')->then(function (Batch $batch) use ($processed) {
-                $this->updateProcessed($processed, true);
-            })->catch(function (Batch $batch, Throwable $e) use ($processed) {
-                $this->updateProcessed($processed);
-            })->finally(function (Batch $batch) use ($processed) {
-            })->dispatch();
-        }
-    } */
-
-
     private function getMessages (int $limit = 5)
     {
-        return SMS::where('sent_status', 0)->where('line', 0)->where('processing', 0)->limit($limit)->get();
+        return SMS::with('operator')->where('sent_status', 0)->where('line', 0)->where('processing', 0)->limit($limit)->get();
     }
     
     private function getMessage (int $id)
@@ -195,6 +194,15 @@ class SmsSender extends Controller
 
     private function resetLines() {
         DB::table('lines')->update(['busy' => 0, 'jobs' => 0]);
+    }
+
+    private function freeLongBusy() {
+        Line::where('busy', 1)
+        ->where('status', 1)
+        ->where('updated_at', '<=', Carbon::now()->subMinutes(5)->toDateTimeString())
+        ->update(['busy' => 0]);
+        
+        return response()->json(['status' => 'success'], 200);
     }
 
 }

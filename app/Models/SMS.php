@@ -10,4 +10,8 @@ class SMS extends Model
     use HasFactory;
     protected $table = "sms";
     protected $fillable = ['user', 'message', 'phone', 'operator', 'operator_id', 'processing', 'line', 'message_id', 'sent_status'];
+
+    public function operator() {
+        return $this->belongsTo(Operator::class);
+    }
 }

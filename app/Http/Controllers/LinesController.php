@@ -26,11 +26,11 @@ class LinesController extends Controller
         return response()->json(['status' => 'success'], 200);
     }
 
-    //TODO: free old used lines
     public function freeLongBusy() {
+        $interval = Carbon::now()->subMinutes(5);
         Line::where('busy', 1)
         ->where('status', 1)
-        ->where('updated_at', '<=', Carbon::now()->subMinutes(5)->toDateTimeString())
+        ->where('updated_at', '<=', $interval)
         ->update(['busy' => 0]);
         
         return response()->json(['status' => 'success'], 200);

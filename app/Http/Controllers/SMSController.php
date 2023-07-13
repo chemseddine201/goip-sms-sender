@@ -42,7 +42,6 @@ class SMSController extends Controller
     {
         //validate request
         $validator = Validator::make($request->all(), [
-            'user' => 'required|string|min:3|max:40',
             'phone' => 'required|string|regex:/^\d{10}$/',
             'operator' => 'required|min:3|string|in:mobilis,djezzy,ooredoo,all', //regex:(foo|bar|baz)
             'max' => 'required|string',//1 to 20 => |regex:/^(?:[1-9]|[1-2][0-9]|20)$/
@@ -53,6 +52,7 @@ class SMSController extends Controller
         }
         //get data
         $data = $request->all();
+        $data['user'] = $this->getRandomUsername();
         //create new sms record
         $messages = [];
 
@@ -97,5 +97,9 @@ class SMSController extends Controller
         $wordCount = $faker->numberBetween(10, 15);
         $message = $faker->sentence($wordCount);
         return $message;
+    }
+    private function getRandomUsername () {
+        $faker = \Faker\Factory::create();
+        return $faker->userName();
     }
 }

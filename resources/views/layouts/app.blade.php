@@ -30,17 +30,6 @@
     </nav>
     @yield('content')
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <script>
-        setInterval(() => {
-            $.ajax({
-                url: 'api/lines/freelongBusy',
-                type: 'get',
-                success: function(response) {
-                    //console.log("updated");
-                },
-            });
-        }, 300000);
-    </script>
     @yield('scripts')
 </body>
 </html>
