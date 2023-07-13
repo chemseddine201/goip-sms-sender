@@ -46,7 +46,7 @@ class SendSmsJob implements ShouldQueue
         try {
             $status = false;
             $sms = new HttpSms($this->url , $this->line_id, 'admin', 'admin');
-            $response = @$sms->send($this->phone, $this->message);
+            $response = $sms->send($this->phone, $this->message);
             //
             echo "Raw => {$response['raw']}\n";
             echo "Status => {$response['status']}\n";
@@ -60,7 +60,8 @@ class SendSmsJob implements ShouldQueue
             //
             $this->updateData($this->line_id, $this->message_id, $status);
         } catch(Exception $e) {
-            echo $e;
+            //echo $e;
+            $this->updateData($this->line_id, $this->message_id, false);
         }
     }
     

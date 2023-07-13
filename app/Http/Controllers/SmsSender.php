@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\SendSmsJob;
 use App\Models\Line;
 use App\Models\SMS;
+use Exception;
 use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
@@ -25,53 +26,61 @@ class SmsSender extends Controller
 
     public function processByMessages() :void
     {
-        $this->resetLines();
-        //TODO: get multiple free lines then send messages
-        while (true) {
-            //
-            $line = null;
-            $jobs = [];
-            $processed = [];
-            // Select non sent messages from sms table
-            $messages = $this->getMessages(5);
-            // check if there is non sent messages
-            if ($messages->isEmpty()) {
-                echo "No messages to Send\n";
-                sleep(10); // Wait for 5 seconds before checking for new messages
-                continue;
-            }
-
-            foreach($messages as $message) {
-                //get the free line
-                $line = $this->getLine($message->operator_id);
-                if (is_null($line)) {
-                    sleep(3);
-                    continue;
+        try {
+            $this->resetLines();
+            //TODO: get multiple free lines then send messages
+            while (true) {
+                //
+                try {
+                    $line = null;
+                    $jobs = [];
+                    $processed = [];
+                    // Select non sent messages from sms table
+                    $messages = $this->getMessages(5);
+                    // check if there is non sent messages
+                    if ($messages->isEmpty()) {
+                        echo "No messages to Send\n";
+                        sleep(10); // Wait for 5 seconds before checking for new messages
+                        continue;
+                    }
+        
+                    foreach($messages as $message) {
+                        //get the free line
+                        $line = $this->getLine($message->operator_id);
+                        if (is_null($line)) {
+                            sleep(3);
+                            continue;
+                        }
+                        
+                        //set selected line busy
+                        $this->setLineBusy($line->id, true);
+                        //Set sms line selected
+                        $this->setProcessing($message->id, $line->id);
+                        //assing processed
+                        $processed[] = [
+                            'message_id' => $message->id,
+                            'line_id' => $line->id
+                        ];
+                        //assing job
+                        $jobs[] = new SendSmsJob([
+                            'message' => $message->toArray(),
+                            'line' => $line->toArray(),
+                        ]);
+                    }
+                    //
+                    Bus::batch($jobs)->onQueue('sms_queue')->then(function (Batch $batch) use ($processed) {
+                        
+                    })->catch(function (Batch $batch, Throwable $e) use ($processed) {
+                        echo $e;
+                        //$this->updateProcessed($processed);
+                    })->finally(function (Batch $batch) use ($processed) {
+                    })->dispatch();
+                } catch (\Throwable $th) {
+                    throw $th;
                 }
-                
-                //set selected line busy
-                $this->setLineBusy($line->id, true);
-                //Set sms line selected
-                $this->setProcessing($message->id, $line->id);
-                //assing processed
-                $processed[] = [
-                    'message_id' => $message->id,
-                    'line_id' => $line->id
-                ];
-                //assing job
-                $jobs[] = new SendSmsJob([
-                    'message' => $message->toArray(),
-                    'line' => $line->toArray(),
-                ]);
             }
-            //
-            Bus::batch($jobs)->onQueue('sms_queue')->then(function (Batch $batch) use ($processed) {
-                
-            })->catch(function (Batch $batch, Throwable $e) use ($processed) {
-                echo $e;
-                //$this->updateProcessed($processed);
-            })->finally(function (Batch $batch) use ($processed) {
-            })->dispatch();
+        } catch(Exception $e) {
+            echo $e;
         }
     }
 

@@ -34,6 +34,8 @@ class MessagesController extends Controller
             $query->offset($start)
                 ->limit($limit);
         }
+        
+        $query->orderBy('id', 'DESC');
 
         $data = $query->select(['id', 'line', 'sent_status', 'phone', 'message', 'user'])->get();
 

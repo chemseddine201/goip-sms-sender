@@ -15,6 +15,7 @@
                 <thead>
                     <tr>
                         <th>No</th>
+                        <th>Operator</th>
                         <th>Status</th>
                         <th>Busy</th>
                         <th>Action</th>
@@ -25,6 +26,7 @@
                         @foreach ($lines as $line)
                             <tr>
                                 <td class="text-capitalize">{{ $line->id }}</td>
+                                <td class="text-capitalize">{{ $line->operator->name }}</td>
                                 <td class="{{$line->status ? "text-success" : "text-warning"}} text-capitalize">{{ $line->status ? "active" : "disabled" }}</td>
                                 <td class="{{$line->busy ? "text-warning" : "text-success"}} text-capitalize">{{ $line->busy ? "busy" : "free" }}</td>
                                 <td class="text-capitalize">

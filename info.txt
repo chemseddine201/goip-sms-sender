@@ -1,3 +1,5 @@
+http://sms-vrsily.access.ly
+
 php artisan serve
 
 php artisan queue:listen --tries=3 --backoff=10 --queue=sms_queue
@@ -8,3 +10,4 @@ php artisan send-messages
 init the project: 
 
 php artisan migrate:fresh --seed
+
