@@ -11,7 +11,7 @@
             </div>
         </div>
         <div class="row w-100 table-container">
-            <table id="table" class="table table-striped">
+            <table id="table" class="table table-striped table-responsive">
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -36,6 +36,7 @@
             var table = $('#table').DataTable({
                 serverSide: true,
                 processing: true,
+                responsive: true,
                 deferRender: true,
                 sDom: 'rtlfip',
                 ajax: {
