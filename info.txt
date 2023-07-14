@@ -2,7 +2,7 @@ http://sms-vrsily.access.ly
 
 php artisan serve
 
-php artisan queue:listen --tries=0 --backoff=10 --queue=sms_queue
+php artisan queue:work --tries=0 --backoff=5 --queue=sms_queue
 
 php artisan send-messages
 
