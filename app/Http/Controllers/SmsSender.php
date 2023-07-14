@@ -27,7 +27,7 @@ class SmsSender extends Controller
         $this->messagesLimit = config('services.goip.messagesLimit');
     }
 
-    /* public function processByMessages() :void
+    public function processByMessages() :void
     {
         try {
             $this->resetLines();
@@ -35,9 +35,7 @@ class SmsSender extends Controller
                 //
                 try {
                     $line = null;
-                    $mobilis = [];
-                    $djezzy = [];
-                    $ooredoo = [];
+                    $jobs = [];
                     // Select non sent messages from sms table
                     $messages = $this->getMessages($this->messagesLimit);//8
                     // check if there is non sent messages
@@ -59,29 +57,16 @@ class SmsSender extends Controller
                         $this->setLineBusy($line->id, true);
                         //Set sms line selected
                         $this->setProcessing($message->id, $line->id);
-                         //assing job
-                         if ($message->operator_id === 1) {
-                             $mobilis[] = new SendSmsJob([
-                                 'message' => $message->toArray(),
-                                 'line' => $line->toArray(),
-                             ]);
-                         } else if ($message->operator_id === 2) {
-                            $djezzy[] = new SendSmsJob([
-                                 'message' => $message->toArray(),
-                                 'line' => $line->toArray(),
-                             ]);
-                         } else if ($message->operator_id === 3) {
-                            $ooredoo[] = new SendSmsJob([
-                                'message' => $message->toArray(),
-                                'line' => $line->toArray(),
-                            ]);
-                        }
+
+                        $jobs[] = new SendSmsJob([
+                            'message' => $message->toArray(),
+                            'line' => $line->toArray(),
+                        ]);
                     }
-                    //
-                    Bus::batch($mobilis)->onQueue('mobilis')->dispatch();
-                    Bus::batch($djezzy)->onQueue('djezzy')->dispatch();
-                    Bus::batch($ooredoo)->onQueue('ooredoo')->dispatch();
                     
+                    //
+                    Bus::batch($jobs)->onQueue('sms_queue')->dispatch();
+    
                 } catch (Throwable $th) {
                     throw $th;
                 }
@@ -89,8 +74,8 @@ class SmsSender extends Controller
         } catch(Exception $e) {
             echo $e;
         }
-    } */
-    public function processByMessages() :void
+    } 
+    /* public function processByMessages() :void
     {
         try {
             $this->resetLines();
@@ -133,7 +118,7 @@ class SmsSender extends Controller
         } catch(Exception $e) {
             echo $e;
         }
-    }
+    } */
 
     private function getMessages (int $limit = 5)
     {

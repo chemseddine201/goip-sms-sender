@@ -11,3 +11,6 @@ init the project:
 
 php artisan migrate:fresh --seed
 
+
+-----------------
+PHP VERSION MUST BE 8.0
