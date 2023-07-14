@@ -36,7 +36,7 @@ class SendSmsJob implements ShouldQueue
         $this->data = $data;
         $this->line_id = $this->data['line']['id'];
         $this->message_id = $this->data['message']['id'];
-        $this->message = preg_replace('/\s+/', ' ', trim($this->data['message']['message']));
+        $this->message = preg_replace('/\n|\r|\t/m', ' ', trim($this->data['message']['message']));
         $this->phone = $this->data['message']['phone'];
     }
 
