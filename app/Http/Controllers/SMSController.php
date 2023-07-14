@@ -20,7 +20,7 @@ class SMSController extends Controller
         ]);
         //check if request valid
         if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()], 400);
+            return response("error", 401)->header('Content-Type', 'text/plain');
         }
         //get data
         $data = $request->all();
@@ -34,7 +34,7 @@ class SMSController extends Controller
             'message_id' => uniqid(),
         ]);
         //return json response
-        return response()->json(['status' => 'success'], 200);
+        return response("success", 200)->header('Content-Type', 'text/plain');
     }
 
     //only for testing
@@ -48,7 +48,7 @@ class SMSController extends Controller
         ]);
         //check if request valid
         if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()], 400);
+            return response("error", 401)->header('Content-Type', 'text/plain');
         }
         //get data
         $data = $request->all();
@@ -71,7 +71,7 @@ class SMSController extends Controller
         //insert all messages
         SMS::insert($messages);
         //return json response
-        return response()->json(['status' => 'success'], 200);
+        return response("success", 200)->header('Content-Type', 'text/plain');
     }
 
     /**

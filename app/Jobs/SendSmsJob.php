@@ -45,7 +45,7 @@ class SendSmsJob implements ShouldQueue
         try {
             $status = false;
             $sms = new HttpSms($this->url , $this->line_id, 'admin', 'admin');
-            $sms->setStatusCheckTries(20);
+            $sms->setStatusCheckTries(15);
             $sms->setGuzzleTimeout(10);
             $response = $sms->send($this->phone, $this->message);
             //
