@@ -10,6 +10,7 @@ use Exception;
 use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
+use Pikart\Goip\Sms\SocketSms;
 use Throwable;
 
 class SmsSender extends Controller
@@ -90,8 +91,16 @@ class SmsSender extends Controller
                         sleep(10); // Wait for 10 seconds before checking for new messages
                         continue;
                     }
-        
+                    $sid = $this->getSessionUid();
                     foreach($lines as $line) {
+                        $port = $this->getUdpPort($line->id);
+                        $sms = new SocketSms(
+                            "192.168.1.110", //"192.168.1.110"
+                            $port,//the line port
+                            $sid,
+                            $this->password, 
+                            ['timeout' => 5]
+                        );
                         //get the free line
                         $messages = $this->getMessages($this->messagesLimit);//max line messages should be 10.
                         if ($messages->isEmpty()) {//wait then move to next free line
@@ -105,15 +114,42 @@ class SmsSender extends Controller
                         //Set sms line selected
                         $ids = $messages->pluck('id')->toArray();
                         $this->setMessagesProcessing($ids, $line->id);
-
+/* 
                         $jobs[] = new SendSmsJob([
                             'messages' => $messages->toArray(),
                             'line' => $line->toArray(),
-                        ]);
+                        ]); */
+                        $status = false;
+                        $sid = $this->getSessionUid();
+                        $port = $this->getUdpPort($line->id);
+                        
+                        foreach($messages->toArray() as $message) {
+                            try {
+                                $phone = $message['phone'];
+                                $msg = $message['message'];
+                                $message_id = $message['id'];
+                                $response = $sms->send($phone, $msg);
+                                $raw = $response['raw'];
+                                echo "Raw => {$raw}";
+                                if (strpos(trim($raw), "OK") !== -1) {//check if success
+                                    $status = true;
+                                    echo "The message '$msg' sent to $phone\n\n";
+                                } else {
+                                    echo "The message '$msg' did not sent to $phone\n\n";
+                                }
+                                //update sent status
+                                $this->updateSentStatus($message_id, $status);
+                            } catch(Exception $e) {
+                                echo $e->getMessage();
+                            }
+                        }
+                        //echo "All Selected messages are sent.\n\n";
+                        //free line when done
+                        $this->freeLine($line->id);
                     }
                     
                     //
-                    Bus::batch($jobs)->onQueue('sms_queue')->dispatch();
+                   // Bus::batch($jobs)->onQueue('sms_queue')->dispatch();
     
                 } catch (Throwable $th) {
                     throw $th;
@@ -241,6 +277,16 @@ class SmsSender extends Controller
         ->update(['busy' => 0]);
         
         return response()->json(['status' => 'success'], 200);
+    }
+
+    private function getUdpPort(int $line_id) : int
+    {
+        return 10990+$line_id;
+    }
+
+    private function getSessionUid() : string
+    {
+        return strval(mt_rand(10000000, 99999999));
     }
 
 }
