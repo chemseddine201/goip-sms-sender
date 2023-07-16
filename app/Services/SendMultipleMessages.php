@@ -27,8 +27,8 @@ class SendMultipleMessages extends SocketSms {
             $content = str_replace(["\n", "\t", "\r"], " ", $message->message);
 
             try {
-                echo "sending => $content TO: $phone\n";
-                
+                echo "Message => $content | Phone => $phone\n";
+
                 $this->sendBulkSmsRequest($content);
                 $this->waitForResponse('sendBulkSmsRequest', 'PASSWORD');
                 $this->sendAuthRequest();
@@ -44,7 +44,7 @@ class SendMultipleMessages extends SocketSms {
                 } else {
                     $fails[] = $id;
                 }
-                echo "'resp' => $resp\n";
+                echo "Response => $resp\n";
                 usleep(5000);
             } catch (Exception $e) {
                 echo $e->getMessage();
