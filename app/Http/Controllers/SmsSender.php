@@ -98,7 +98,7 @@ class SmsSender extends Controller
                             "192.168.1.110", //"192.168.1.110"
                             $port,//the line port
                             $sid,
-                            $this->password, 
+                            "admin", 
                             ['timeout' => 5]
                         );
                         //get the free line
@@ -108,17 +108,17 @@ class SmsSender extends Controller
                             sleep(5);
                             continue;
                         }
-                        
                         //set selected line busy
                         $this->setLineBusy($line->id, true);
                         //Set sms line selected
                         $ids = $messages->pluck('id')->toArray();
                         $this->setMessagesProcessing($ids, $line->id);
-/* 
-                        $jobs[] = new SendSmsJob([
-                            'messages' => $messages->toArray(),
-                            'line' => $line->toArray(),
-                        ]); */
+                        /* 
+                            $jobs[] = new SendSmsJob([
+                                'messages' => $messages->toArray(),
+                                'line' => $line->toArray(),
+                            ]); 
+                        */
                         $status = false;
                         $sid = $this->getSessionUid();
                         $port = $this->getUdpPort($line->id);
