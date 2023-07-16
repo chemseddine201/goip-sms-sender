@@ -21,9 +21,6 @@ class SmsSender extends Controller
 
     public function __construct()
     {
-        $this->host = config('services.goip.host');
-        $this->username = config('services.goip.username');
-        $this->password = config('services.goip.password');
         $this->messagesLimit = config('services.goip.messagesLimit');
     }
 
@@ -60,6 +57,57 @@ class SmsSender extends Controller
 
                         $jobs[] = new SendSmsJob([
                             'message' => $message->toArray(),
+                            'line' => $line->toArray(),
+                        ]);
+                    }
+                    
+                    //
+                    Bus::batch($jobs)->onQueue('sms_queue')->dispatch();
+    
+                } catch (Throwable $th) {
+                    throw $th;
+                }
+            }
+        } catch(Exception $e) {
+            echo $e;
+        }
+    } 
+
+
+    public function processByLines() :void
+    {
+        try {
+            $this->resetLines();
+            while (true) {
+                //
+                try {
+                    $jobs = [];
+                    //max 5 lines because goip supports only 5 sessions same time
+                    $lines = $this->getFreeLines();
+                    // check if there is non sent messages
+                    if ($lines->isEmpty()) {
+                        echo "No Free Lines\n";
+                        sleep(10); // Wait for 10 seconds before checking for new messages
+                        continue;
+                    }
+        
+                    foreach($lines as $line) {
+                        //get the free line
+                        $messages = $this->getMessages($this->messagesLimit);//max line messages should be 10.
+                        if ($messages->isEmpty()) {//wait then move to next free line
+                            echo "No Messages to Send Via Line {$line->id}\n";
+                            sleep(5);
+                            continue;
+                        }
+                        
+                        //set selected line busy
+                        $this->setLineBusy($line->id, true);
+                        //Set sms line selected
+                        $ids = $messages->pluck('id')->toArray();
+                        $this->setMessagesProcessing($ids, $line->id);
+
+                        $jobs[] = new SendSmsJob([
+                            'messages' => $messages->toArray(),
                             'line' => $line->toArray(),
                         ]);
                     }
@@ -137,12 +185,17 @@ class SmsSender extends Controller
 
     private function getFreeLines ()
     {
-        return Line::where('busy', 0)->where('status', 1)->get();
+        return Line::where('busy', 0)->where('status', 1)->limit(5)->get();
     }
     
     private function setProcessing (int $id, int $line)
     {
         SMS::where('id', $id)->update(['line' => $line, 'processing' => 1]);
+    }
+
+    private function setMessagesProcessing (array $ids, int $line_id)
+    {
+        SMS::whereIn('id', $ids)->update(['line' => $line_id, 'processing' => 1]);
     }
 
 

@@ -33,6 +33,8 @@ return [
     'goip' => [
         'host' => env('GOIP_HOST'),
         'port' => env('GOIP_PORT'),
+        'udp_ip' => env('GOIP_UDP_IP'),
+        'udp_port' => env('GOIP_UDP_PORT'),
         'username' => env('GOIP_USERNAME'),
         'password' => env('GOIP_PASSWORD'),
         'messagesLimit' => env('GOIP_MESSAGES_AT_ONCE'),

@@ -13,62 +13,80 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-
+use Pikart\Goip\Sms\SocketSms;
 
 //use Illuminate\Support\Facades\Log;
 
 class SendSmsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, Batchable, SerializesModels;
-    public $tries = 3;
-    public $maxExceptions = 3;
-
-    protected $data;
-    private $url;
+    //protected $data;
+    private $messages;
+    private $ip;
+    private $password;
     private $line_id;
-    private $message_id;
-    private $message;
-    private $phone;
-
+    
     public function __construct($data)
     {
-        $this->url = $this->getGoipUrl();
-        $this->data = $data;
-        $this->line_id = $this->data['line']['id'];
-        $this->message_id = $this->data['message']['id'];
-        $this->message = preg_replace('/\n|\r|\t/m', ' ', trim($this->data['message']['message']));
-        $this->phone = $this->data['message']['phone'];
+
+        $this->messages = $data['messages'];
+        $this->line_id = $data['line']['id'];
+        $this->ip = (string) config('services.goip.udp_ip');
+        $this->password = (string) config('services.goip.password');
     }
 
-    public function handle(GoipSmsService $smsService)
+    public function handle()
     {
         try {
             $status = false;
-            $sms = new HttpSms($this->url , $this->line_id, 'admin', 'admin');
-            $sms->setStatusCheckTries(15);
-            $sms->setGuzzleTimeout(10);
-            $response = $sms->send($this->phone, $this->message);
-            //
-            echo "Raw => {$response['raw']}\n";
-            echo "Status => {$response['status']}\n";
-            //
-            if ($response["status"] === "send") {
-                $status = true;
-                echo "The message '$this->message' sent to $this->phone\n\n";
-            } else {
-                echo "The message '$this->message' did not sent to $this->phone\n\n";
+            $sid = $this->getSessionUid();
+            $port = $this->getUdpPort($this->line_id);
+            $sms = new SocketSms(
+                $this->ip, //"192.168.1.110"
+                $port,//the line port
+                $sid,
+                $this->password, 
+                ['timeout' => 5]
+            );
+            foreach($this->messages as $message) {
+                try {
+                    $phone = $message['phone'];
+                    $msg = $message['message'];
+                    $message_id = $message['id'];
+                    $response = $sms->send($phone, $msg);
+                    $raw = $response['raw'];
+                    echo "Raw => {$raw}";
+                    if (strpos(trim($raw), "OK") !== -1) {//check if success
+                        $status = true;
+                        echo "The message '$msg' sent to $phone\n\n";
+                    } else {
+                        echo "The message '$msg' did not sent to $phone\n\n";
+                    }
+                    //update sent status
+                    $this->updateSentStatus($message_id, $status);
+                } catch(Exception $e) {
+                    echo $e->getMessage();
+                }
             }
-            //
-            $this->updateData($this->line_id, $this->message_id, $status);
+            //echo "All Selected messages are sent.\n\n";
+            //free line when done
+            $this->freeLine($this->line_id);
         } catch(Exception $e) {
-            echo $e->getMessage();
-            $this->updateData($this->line_id, $this->message_id, false);
-        }
+            echo $e;
+        } 
     }
     
     private function updateData(int $line_id, int $message_id, bool $status = false)
     {
         Line::where('id', $line_id)->update(['busy' => false]);
+        SMS::where('id', $message_id)->update(['sent_status' => $status]);
+    }
+
+    private function freeLine (int $line_id) {
+        Line::where('id', $line_id)->update(['busy' => false]);
+    }
+
+    private function updateSentStatus (int $message_id, bool $status) {
         SMS::where('id', $message_id)->update(['sent_status' => $status]);
     }
 
@@ -88,5 +106,16 @@ class SendSmsJob implements ShouldQueue
         }
     
         return $url;
+    }
+
+
+    private function getUdpPort(int $line_id) : int
+    {
+        return 10990+$line_id;
+    }
+
+    private function getSessionUid() : string
+    {
+        return strval(mt_rand(10000000, 99999999));
     }
 }

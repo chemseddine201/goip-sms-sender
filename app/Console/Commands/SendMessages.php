@@ -34,6 +34,7 @@ class SendMessages extends Command
     public function handle()
     {
         $controller = new SmsSender(); // make sure to import the controller
-        $controller->processByMessages();
+        //$controller->processByMessages();
+        $controller->processByLines();
     }
 }
