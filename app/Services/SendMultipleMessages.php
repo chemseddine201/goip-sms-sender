@@ -27,6 +27,8 @@ class SendMultipleMessages extends SocketSms {
             $content = str_replace(["\n", "\t", "\r"], " ", $message->message);
 
             try {
+                echo "sending => $content TO: $phone\n";
+                
                 $this->sendBulkSmsRequest($content);
                 $this->waitForResponse('sendBulkSmsRequest', 'PASSWORD');
                 $this->sendAuthRequest();
