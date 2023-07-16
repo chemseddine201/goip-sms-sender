@@ -90,4 +90,11 @@ return [
         'table' => 'failed_jobs',
     ],
 
+    'rateLimit' => [
+        'sms_queue' => [
+            'allows' => 1, // number of jobs
+            'every' => 10 // time interval in seconds
+        ]
+    ]
+
 ];
