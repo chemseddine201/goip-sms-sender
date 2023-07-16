@@ -270,6 +270,10 @@ class SmsSender extends Controller
         DB::table('lines')->update(['busy' => 0, 'jobs' => 0]);
     }
 
+    private function updateSentStatus (int $message_id, bool $status) {
+        SMS::where('id', $message_id)->update(['sent_status' => $status]);
+    }
+
     private function freeLongBusy() {
         Line::where('busy', 1)
         ->where('status', 1)
