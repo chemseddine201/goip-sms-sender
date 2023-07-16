@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\SendSmsJob;
 use App\Models\Line;
 use App\Models\SMS;
+use App\Services\SendMultipleMessages;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Bus\Batch;
@@ -15,14 +16,17 @@ use Throwable;
 
 class SmsSender extends Controller
 {
-    protected $host;
-    protected $username;
+    protected $sessions;
+    protected $ip;
     protected $password;
     protected $messagesLimit;
 
     public function __construct()
     {
+        $this->sessions = [];
         $this->messagesLimit = config('services.goip.messagesLimit');
+        $this->ip = (string) config('services.goip.udp_ip');
+        $this->password = (string) config('services.goip.password');
     }
 
     public function processByMessages() :void
@@ -30,7 +34,6 @@ class SmsSender extends Controller
         try {
             $this->resetLines();
             while (true) {
-                //
                 try {
                     $line = null;
                     $jobs = [];
@@ -42,7 +45,7 @@ class SmsSender extends Controller
                         sleep(10); // Wait for 10 seconds before checking for new messages
                         continue;
                     }
-        
+
                     foreach($messages as $message) {
                         //get the free line
                         $line = $this->getLine($message->operator_id);
@@ -50,7 +53,7 @@ class SmsSender extends Controller
                             sleep(1);
                             continue;
                         }
-                        
+
                         //set selected line busy
                         $this->setLineBusy($line->id, true);
                         //Set sms line selected
@@ -74,15 +77,12 @@ class SmsSender extends Controller
         }
     } 
 
-
     public function processByLines() :void
     {
         try {
             $this->resetLines();
             while (true) {
-                //
                 try {
-                    $jobs = [];
                     //max 5 lines because goip supports only 5 sessions same time
                     $lines = $this->getFreeLines();
                     // check if there is non sent messages
@@ -91,118 +91,44 @@ class SmsSender extends Controller
                         sleep(10); // Wait for 10 seconds before checking for new messages
                         continue;
                     }
-                    $sid = $this->getSessionUid();
-                    foreach($lines as $line) {
+                    //all lines has the same session id
+                    foreach ($lines as $line) {
+                        $sid = $this->getSessionUid();
                         $port = $this->getUdpPort($line->id);
-                        $sms = new SocketSms(
-                            "192.168.1.110", //"192.168.1.110"
-                            $port,//the line port
-                            $sid,
-                            "admin", 
-                            ['timeout' => 5]
-                        );
-                        //get the free line
                         $messages = $this->getMessages($this->messagesLimit);//max line messages should be 10.
+                        //get the free line
                         if ($messages->isEmpty()) {//wait then move to next free line
                             echo "No Messages to Send Via Line {$line->id}\n";
                             sleep(5);
                             continue;
                         }
+                        $sms = new SendMultipleMessages(
+                            $this->ip,
+                            $port,
+                            $sid,
+                            $this->password, 
+                            ['timeout' => 10]
+                        );
                         //set selected line busy
                         $this->setLineBusy($line->id, true);
                         //Set sms line selected
                         $ids = $messages->pluck('id')->toArray();
                         $this->setMessagesProcessing($ids, $line->id);
-                        /* 
-                            $jobs[] = new SendSmsJob([
-                                'messages' => $messages->toArray(),
-                                'line' => $line->toArray(),
-                            ]); 
-                        */
-                        $status = false;
-                        $sid = $this->getSessionUid();
-                        $port = $this->getUdpPort($line->id);
-                        
-                        foreach($messages->toArray() as $message) {
-                            try {
-                                $phone = $message['phone'];
-                                $msg = $message['message'];
-                                $message_id = $message['id'];
-                                $response = $sms->send($phone, $msg);
-                                $raw = $response['raw'];
-                                echo "Raw => {$raw}";
-                                if (strpos(trim($raw), "OK") !== -1) {//check if success
-                                    $status = true;
-                                    echo "The message '$msg' sent to $phone\n\n";
-                                } else {
-                                    echo "The message '$msg' did not sent to $phone\n\n";
-                                }
-                                //update sent status
-                                $this->updateSentStatus($message_id, $status);
-                            } catch(Exception $e) {
-                                echo $e->getMessage();
-                            }
-                        }
-                        //echo "All Selected messages are sent.\n\n";
+
+                        $response = $sms->sendMultiple($messages);
                         //free line when done
+                        $this->updateMessagesSentStatus($response);
                         $this->freeLine($line->id);
                     }
-                    
-                    //
-                   // Bus::batch($jobs)->onQueue('sms_queue')->dispatch();
-    
+                    //remove the session id
                 } catch (Throwable $th) {
-                    throw $th;
+                    echo $th->getMessage();
                 }
             }
         } catch(Exception $e) {
             echo $e;
         }
     } 
-    /* public function processByMessages() :void
-    {
-        try {
-            $this->resetLines();
-            while (true) {
-                //
-                try {
-                    // Select non sent messages from sms table
-                    $messages = $this->getMessages($this->messagesLimit);//8
-                    // check if there is non sent messages
-                    if ($messages->isEmpty()) {
-                        echo "No messages to Send\n";
-                        sleep(10); // Wait for 10 seconds before checking for new messages
-                        continue;
-                    }
-
-                    $jobs = $messages->map(function ($message) {
-                        $line = $this->getLine($message->operator_id);
-                        if (is_null($line)) {
-                            return null;
-                        }
-                        
-                        //set selected line busy
-                        $this->setLineBusy($line->id, true);
-                        //Set sms line selected
-                        $this->setProcessing($message->id, $line->id);
-                        
-                        return new SendSmsJob([
-                            'message' => $message->toArray(),
-                            'line' => $line->toArray(),
-                        ]);
-                    })->filter()->groupBy('operator.name')->toArray();
-                    
-                    foreach ($jobs as $operator => $operatorJobs) {
-                        Bus::batch($operatorJobs)->onQueue($operator)->dispatch();
-                    }
-                } catch (Throwable $th) {
-                    throw $th;
-                }
-            }
-        } catch(Exception $e) {
-            echo $e;
-        }
-    } */
 
     private function getMessages (int $limit = 5)
     {
@@ -273,6 +199,12 @@ class SmsSender extends Controller
     private function updateSentStatus (int $message_id, bool $status) {
         SMS::where('id', $message_id)->update(['sent_status' => $status]);
     }
+    private function updateMessagesSentStatus (array $response) {
+        $success_ids = $response['success'];
+        $fail_ids = $response['fails'];
+        SMS::whereIn('id', $success_ids)->update(['sent_status' => 1]);
+        SMS::whereIn('id', $fail_ids)->update(['sent_status' => 0]);
+    }
 
     private function freeLongBusy() {
         Line::where('busy', 1)
@@ -290,11 +222,20 @@ class SmsSender extends Controller
 
     private function getSessionUid() : string
     {
-        return strval(mt_rand(10000000, 99999999));
+        return strval(mt_rand(100000, 99999999));
     }
 
     private function freeLine (int $line_id) {
         Line::where('id', $line_id)->update(['busy' => false]);
     }
 
+
+    function sessionExists($array, $key_to_check) {
+        foreach ($array as $child_array) {
+            if (array_key_exists($key_to_check, $child_array)) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
