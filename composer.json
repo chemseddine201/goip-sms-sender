@@ -6,12 +6,19 @@
     "license": "MIT",
     "require": {
         "php": ">=7.3",
+        "amphp/amp": "^3.0",
+        "amphp/http-client": "^0.7.0",
+        "amphp/parallel": "^2.2",
+        "amphp/socket": "^2.1",
         "fruitcake/laravel-cors": "^2.0",
         "guzzlehttp/guzzle": "^6.5",
         "laravel/framework": "^8.75",
         "laravel/sanctum": "^2.11",
         "laravel/tinker": "^2.5",
-        "pikart/goip": "1.0.5"
+        "pikart/goip": "1.0.5",
+        "react/async": "^4",
+        "react/child-process": "^0.6.5",
+        "revolt/event-loop": "^1.0"
     },
     "require-dev": {
         "facade/ignition": "^2.5",

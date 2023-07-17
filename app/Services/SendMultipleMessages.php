@@ -17,13 +17,14 @@ class SendMultipleMessages extends SocketSms {
         parent::__construct($host, $port, $uniqueSessionIdentifier, $password, $options);
     }
 
-    public function sendMultiple ($messages) : array {
+    public function sendMultiple ($messages, $line_id) : array {
         $success = [];
         $fails = [];
         //
         foreach ($messages as $message) {
             $phone = $message->phone;
             $id = $message->id;
+            
             $content = str_replace(["\n", "\t", "\r"], " ", $message->message);
 
             try {
@@ -52,6 +53,7 @@ class SendMultipleMessages extends SocketSms {
             }
         }
         return [
+          "line_id" => $line_id,
            "success" => $success,
            "fails" => $fails
         ];

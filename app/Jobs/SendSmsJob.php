@@ -26,54 +26,20 @@ class SendSmsJob implements ShouldQueue
     private $password;
     private $line_id;
     
-    public function __construct($data)
+    public function __construct($messages = [])
     {
 
-        $this->messages = $data['messages'];
-        $this->line_id = $data['line']['id'];
-        $this->ip = (string) config('services.goip.udp_ip');
-        $this->password = (string) config('services.goip.password');
+        $this->messages = $messages;
+
     }
 
     public function handle()
     {
         try {
-            $status = false;
-            $sid = $this->getSessionUid();
-            $port = $this->getUdpPort($this->line_id);
-            $sms = new SocketSms(
-                $this->ip, //"192.168.1.110"
-                $port,//the line port
-                $sid,
-                $this->password, 
-                ['timeout' => 5]
-            );
-            foreach($this->messages as $message) {
-                try {
-                    $phone = $message['phone'];
-                    $msg = $message['message'];
-                    $message_id = $message['id'];
-                    $response = $sms->send($phone, $msg);
-                    $raw = $response['raw'];
-                    echo "Raw => {$raw}";
-                    if (strpos(trim($raw), "OK") !== -1) {//check if success
-                        $status = true;
-                        echo "The message '$msg' sent to $phone\n\n";
-                    } else {
-                        echo "The message '$msg' did not sent to $phone\n\n";
-                    }
-                    //update sent status
-                    $this->updateSentStatus($message_id, $status);
-                } catch(Exception $e) {
-                    echo $e->getMessage();
-                }
-            }
-            //echo "All Selected messages are sent.\n\n";
-            //free line when done
-            $this->freeLine($this->line_id);
-        } catch(Exception $e) {
-            echo $e;
-        } 
+            //code...
+        } catch (\Throwable $th) {
+            throw $th;
+        }
     }
     
     private function updateData(int $line_id, int $message_id, bool $status = false)
