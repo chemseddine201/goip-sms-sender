@@ -109,51 +109,20 @@ class SmsSender extends Controller
                         //get the free line
                         if ($messages->isEmpty()) {//wait then move to next free line
                             echo "No Messages to Send Via Line {$line->id}\n";
-                            sleep(3);
+                            sleep(1);
                             continue;
                         }
 
-                        if (sizeof($workers) < 3) {
-                            //set selected line busy
-                            $this->setLineBusy($line->id, true);
-                            //Set sms line selected
-                            $ids = $messages->pluck('id')->toArray();
-                            $this->setMessagesProcessing($ids, $line->id);
-                            //$workers[$line->id] = new SendMessagesTask($messages, $sid, $line->id);
-                            $workers[$line->id] = submit(new SendMessagesTask($messages, $sid, $line->id));
-                        } else {
-                            sleep(3);
-                            continue;
-                        }
+                        //set selected line busy
+                        $this->setLineBusy($line->id, true);
+                        //Set sms line selected
+                        $ids = $messages->pluck('id')->toArray();
+                        $this->setMessagesProcessing($ids, $line->id);
+                        $smsTask = new SendMessagesTask($messages, $sid, $line->id);
+                        $response = $smsTask->run(null, null);
+                        $this->updateMessagesSentStatus($response);
+                        $this->freeLine($response['line_id']);
                     }
-                    if (sizeof($workers) > 0) {
-                        $length = sizeof($workers);
-                        echo "workers-length => $length\n";
-                        $responses = await(array_map(
-                            function ($worker) {
-                                return $worker->getFuture();
-                            },
-                            $workers
-                        ));
-                        
-                        /* $responses = awaitFirst(array_map(function ($worker) {
-                            return async(function() use ($worker) {
-                                return $worker->run(null, null);
-                            });
-                        }, $workers)); */
-
-                        if (sizeof($responses) > 0) {
-                            foreach($responses as $key => $response) {
-                                if (empty($response)) {
-                                    continue;
-                                }
-                                $lineid = $response['line_id'];
-                                $this->updateMessagesSentStatus($response);
-                                $this->freeLine($lineid);
-                            }
-                        }
-                    }
-                    //remove the session id
                 } catch (Exception $th) {
                     echo $th;
                 }
