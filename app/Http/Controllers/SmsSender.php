@@ -90,7 +90,7 @@ class SmsSender extends Controller
     {
         try {
             $this->resetLines();
-
+            $sid = $this->getSessionUid();
             while (true) {
                 $workers = [];
                 try {
@@ -103,7 +103,7 @@ class SmsSender extends Controller
                         continue;
                     }
                     //all lines has the same session id
-                    $sid = $this->getSessionUid();
+                    
                     foreach ($lines as $line) {
                         $messages = $this->getMessages($this->messagesLimit, $line->operator_id);//max line messages should be 10.
                         //get the free line
