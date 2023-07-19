@@ -121,7 +121,7 @@ class SmsSender extends Controller
                             $this->setMessagesProcessing($ids, $line->id);
                             //$workers[$line->id] = new SendMessagesTask($messages, $sid, $line->id);
                             $workers[$line->id] = submit(new SendMessagesTask($messages, $sid, $line->id));
-                            sleep(10);
+                            sleep(3);
                         }
                     }
                     if (sizeof($workers) > 0) {
