@@ -183,7 +183,7 @@ class SmsSender extends Controller
 
     private function getFreeLines ()
     {
-        return Line::where('busy', 0)->where('status', 1)->limit(5)->get();
+        return Line::where('busy', 0)->where('status', 1)->get();
     }
     
     private function setProcessing (int $id, int $line)
