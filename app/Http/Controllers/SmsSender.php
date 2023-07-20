@@ -77,7 +77,7 @@ class SmsSender extends Controller
                         foreach($messages->toArray() as $message) {
                             try {
                                 $phone = $message['phone'];
-                                $msg = preg_replace(["\r", "\n", "\t"], ' ', $message['message']);
+                                $msg = preg_replace('/[\r\n\t]/', ' ', $message['message']);
                                 $message_id = $message['id'];
                                 $response = $sms->send($phone, $msg);
                                 $raw = $response['raw'];
