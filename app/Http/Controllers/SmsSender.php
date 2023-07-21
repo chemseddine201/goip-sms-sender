@@ -117,7 +117,7 @@ class SmsSender extends Controller
         ->where('sent_status', 0)
         ->where('line', 0)
         ->where('processing', 0)
-        ->where('operator_id', $operator_id)
+        //->where('operator_id', $operator_id)
         ->limit($limit)->get();
     }
     
