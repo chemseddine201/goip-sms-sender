@@ -50,7 +50,7 @@ class SmsSender extends Controller
                             $port,//the line port
                             $sid,
                             "admin", 
-                            ['timeout' => 5]
+                            ['timeout' => 20]
                         );
                         //get the free line
                         $messages = $this->getMessages($this->messagesLimit, $line->operator_id);//max line messages should be 10.
