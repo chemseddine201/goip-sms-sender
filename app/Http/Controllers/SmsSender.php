@@ -35,7 +35,7 @@ class SmsSender extends Controller
                 try {
                     $jobs = [];
                     //max 5 lines because goip supports only 5 sessions same time
-                    $lines = $this->getFreeLines(10);
+                    $lines = $this->getFreeLines(5);
                     // check if there is non sent messages
                     if ($lines->isEmpty()) {
                         echo "No Free Lines\n";
